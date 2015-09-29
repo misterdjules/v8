@@ -1014,11 +1014,21 @@ Object* Isolate::Throw(Object* exception, MessageLocation* location) {
       // print a user-friendly stack trace (not an internal one).
       if (FLAG_abort_on_uncaught_exception &&
           PredictExceptionCatcher() != CAUGHT_BY_JAVASCRIPT) {
-        FLAG_abort_on_uncaught_exception = false;  // Prevent endless recursion.
-        PrintF(stderr, "%s\n\nFROM\n",
-               MessageHandler::GetLocalizedMessage(this, message_obj).get());
-        PrintCurrentStackTrace(stderr);
-        base::OS::Abort();
+        // If the embedder didn't specify a custom uncaught exception callback,
+        // or if the custom callback determined that V8 should abort, then
+        // abort
+        bool should_abort = !abort_on_uncaught_exception_callback_ ||
+                             abort_on_uncaught_exception_callback_(
+                                 reinterpret_cast<v8::Isolate*>(this));
+
+        if (should_abort) {
+          // Prevent endless recursion.
+          FLAG_abort_on_uncaught_exception = false;
+          PrintF(stderr, "%s\n\nFROM\n",
+                 MessageHandler::GetLocalizedMessage(this, message_obj).get());
+          PrintCurrentStackTrace(stderr);
+          base::OS::Abort();
+        }
       }
     }
   }
@@ -1601,6 +1611,10 @@ void Isolate::SetCaptureStackTraceForUncaughtExceptions(
   stack_trace_for_uncaught_exceptions_options_ = options;
 }
 
+void Isolate::SetAbortOnUncaughtExceptionCallback(
+      v8::Isolate::AbortOnUncaughtExceptionCallback callback) {
+  abort_on_uncaught_exception_callback_ = callback;
+}
 
 Handle<Context> Isolate::native_context() {
   return handle(context()->native_context());
@@ -1770,7 +1784,8 @@ Isolate::Isolate(bool enable_serializer)
       next_unique_sfi_id_(0),
 #endif
       use_counter_callback_(NULL),
-      basic_block_profiler_(NULL) {
+      basic_block_profiler_(NULL),
+      abort_on_uncaught_exception_callback_(NULL) {
   {
     base::LockGuard<base::Mutex> lock_guard(thread_data_table_mutex_.Pointer());
     CHECK(thread_data_table_);

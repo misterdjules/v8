@@ -176,6 +176,7 @@
         'test-weakmaps.cc',
         'test-weaksets.cc',
         'trace-extension.cc',
+        'test-abort-on-uncaught-exception.cc'
       ],
       'conditions': [
         ['v8_target_arch=="ia32"', {

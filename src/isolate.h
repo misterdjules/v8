@@ -655,6 +655,10 @@ class Isolate {
       int frame_limit,
       StackTrace::StackTraceOptions options);
 
+  typedef bool (*AbortOnUncaughtExceptionCallback)(v8::Isolate*);
+  void SetAbortOnUncaughtExceptionCallback(
+    AbortOnUncaughtExceptionCallback callback);
+
   enum PrintStackMode { kPrintStackConcise, kPrintStackVerbose };
   void PrintCurrentStackTrace(FILE* out);
   void PrintStack(StringStream* accumulator,
@@ -1324,6 +1328,8 @@ class Isolate {
   FutexWaitListNode futex_wait_list_node_;
 
   std::set<Cancelable*> cancelable_tasks_;
+
+  AbortOnUncaughtExceptionCallback abort_on_uncaught_exception_callback_;
 
   friend class ExecutionAccess;
   friend class HandleScopeImplementer;
